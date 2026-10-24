@@ -1,10 +1,3 @@
--- ==========================================
--- FREECAM v7 by kecap
--- P = on/off (bisa diganti di GUI)
--- WASD = gerak, E/Q = naik/turun, Shift = cepat
--- Klik kanan tahan = putar kamera
--- Scroll = zoom, slider = atur speed (default 1.0x)
--- ==========================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
