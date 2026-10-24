@@ -1,4 +1,3 @@
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UIS = game:GetService("UserInputService")
@@ -9,7 +8,7 @@ local CoreGui = game:GetService("CoreGui")
 local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
--- ============ CONFIG ============
+-- ============ SOUND ============
 local SOUNDS = {
     toggleOn  = { id = "rbxasset://sounds/electronicpingshort.wav", speed = 1.35, vol = 0.45 },
     toggleOff = { id = "rbxasset://sounds/electronicpingshort.wav", speed = 0.75, vol = 0.45 },
@@ -20,6 +19,7 @@ local SOUNDS = {
     intro     = { id = "rbxasset://sounds/electronicpingshort.wav", speed = 1.0, vol = 0.4 },
 }
 
+-- ============ CONFIG ============
 local C = {
     BASE_SPEED = 40, FAST_MULT = 3,
     SPEED_MIN = 0.1, SPEED_MAX = 4,
@@ -41,7 +41,7 @@ local C = {
 local S = {
     enabled = false, listening = false, minimized = false, animating = false,
     draggingSlider = false, rotating = false,
-    bubbleDragging = false, bubbleMoved = false, dragStart = nil, dragPos = nil,
+    dragging = false, dragMoved = false, dragStart = nil, dragPos = nil,
     pos = Vector3.new(0, 0, 0), targetPos = Vector3.new(0, 0, 0),
     yaw = 0, pitch = 0, tYaw = 0, tPitch = 0,
     savedCam = nil, savedFov = 70, curFov = 70, tFov = 70,
@@ -152,6 +152,14 @@ UI.content.BackgroundTransparency = 1
 UI.content.Visible = false
 UI.content.Parent = UI.panel
 
+-- Area drag untuk panel kotak (bagian judul). Tombol di atasnya tetap bisa diklik.
+UI.dragBar = Instance.new("Frame")
+UI.dragBar.Size = UDim2.new(1, 0, 0, 46)
+UI.dragBar.BackgroundTransparency = 1
+UI.dragBar.Active = true
+UI.dragBar.ZIndex = 1
+UI.dragBar.Parent = UI.content
+
 UI.title = makeLabel(UI.content, "FREECAM", 16, 14, 180, 22, Enum.Font.GothamBlack, 17, C.WHITE)
 UI.title.TextStrokeColor3 = C.ACCENT
 UI.title.TextStrokeTransparency = 0.4
@@ -209,7 +217,7 @@ UI.keyBtn.AutoButtonColor = false
 UI.keyBtn.ZIndex = 5
 UI.keyBtn.Parent = UI.content
 makeCorner(UI.keyBtn, UDim.new(0, 8))
-local keyStroke = makeStroke(UI.keyBtn, 1, 0.5)
+makeStroke(UI.keyBtn, 1, 0.5)
 
 -- Speed slider
 makeLabel(UI.content, "Speed", 16, 130, 120, 20, Enum.Font.GothamMedium, 13, C.TEXT)
@@ -430,6 +438,20 @@ local function playIntro()
     S.animating = false
 end
 
+-- ============ DRAG (panel kotak & bulatan K) ============
+local function beginDrag(input)
+    local t = input.UserInputType
+    if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+        S.dragging = true
+        S.dragMoved = false
+        S.dragStart = input.Position
+        S.dragPos = UI.panel.Position
+    end
+end
+
+UI.dragBar.InputBegan:Connect(beginDrag)
+UI.kBtn.InputBegan:Connect(beginDrag)
+
 -- ============ EVENTS ============
 UI.track.Activated:Connect(function()
     setEnabled(not S.enabled)
@@ -446,17 +468,6 @@ UI.keyBtn.Activated:Connect(function()
     UI.keyBtn.Text = "..."
     UI.keyBtn.TextColor3 = C.WHITE
     tween(UI.keyBtn, { BackgroundColor3 = C.ACCENT })
-end)
-
--- Bulatan K bisa digeser. Kalau cuma diklik (geser < 6px) panel terbuka.
-UI.kBtn.InputBegan:Connect(function(input)
-    local t = input.UserInputType
-    if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
-        S.bubbleDragging = true
-        S.bubbleMoved = false
-        S.dragStart = input.Position
-        S.dragPos = UI.panel.Position
-    end
 end)
 
 UI.sliderHit.InputBegan:Connect(function(input)
@@ -496,9 +507,10 @@ UIS.InputEnded:Connect(function(input)
     local t = input.UserInputType
     if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
         S.draggingSlider = false
-        if S.bubbleDragging then
-            S.bubbleDragging = false
-            if not S.bubbleMoved and S.minimized then
+        if S.dragging then
+            S.dragging = false
+            -- klik tanpa geser di bulatan K = buka panel
+            if not S.dragMoved and S.minimized then
                 playSound("expand")
                 setMinimized(false)
             end
@@ -513,10 +525,10 @@ UIS.InputChanged:Connect(function(input)
     local t = input.UserInputType
 
     if t == Enum.UserInputType.MouseMovement or t == Enum.UserInputType.Touch then
-        if S.bubbleDragging and S.minimized then
+        if S.dragging then
             local delta = input.Position - S.dragStart
             if delta.Magnitude > 6 then
-                S.bubbleMoved = true
+                S.dragMoved = true
             end
             UI.panel.Position = UDim2.new(
                 S.dragPos.X.Scale, S.dragPos.X.Offset + delta.X,
